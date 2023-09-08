@@ -30,7 +30,11 @@ export default function Head() {
       <meta name="twitter:description" content={meta.description} />
       <meta name="twitter:image" content={meta.image} />
       <link href={meta.image} rel="icon" type="image/x-icon" />
-
+      <script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1047622928074372"
+        crossOrigin="anonymous"
+      />
       {/* Global Site Tag (gtag.js) - Google Analytics */}
       {/* <script async src="https://www.googletagmanager.com/gtag/js?id=UA-126371045-1" />
       <script
