@@ -3,7 +3,7 @@ const siteMetadata = {
   title: 'Gbenga Oni | Software & DevOps Engineer',
   author: 'Gbenga Oni',
   headerTitle: 'Gbenga Oni',
-  description: "Hey, I'm a Senior DevOps and Platform Engineer. I enjoy architecting in the cloud and working with distributed systems.",
+  description: "Hey, I'm a Senior Software, DevOps and Platform Engineer. I enjoy architecting in the cloud and working with distributed systems.",
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://gbengaoni.com',
