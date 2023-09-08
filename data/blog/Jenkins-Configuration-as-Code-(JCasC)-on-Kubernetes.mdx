@@ -7,10 +7,10 @@ categories: []
 tags: ['Configuration as Code', 'Jenkins', 'Kubernetes']
 keywords: []
 slug: jenkins-configuration-as-code-JCasC-on-kubernetes
-images: ['/images/JCasC.png']
+images: ['/static/images/jenkins.png']
 ---
  
-![jenkinsjcasc](/images/JCasC.png)
+![jenkinsjcasc](/static/images/jenkins.png)
 
 ### Introduction
 
@@ -72,7 +72,7 @@ touch values.yaml
 ```
 
 Then edit the files and paste in the following:
-```
+```yaml:values.yaml
 controller: 
  
  
@@ -233,7 +233,7 @@ The Jobs DSL plugin allows the definition of Jobs on jenkins in a programmatic w
 ### Update Helm Values file with Pipeline Job
 Lets update the Jenkins chart values file and add a Pipeline Job called `test-job` through configuration as code:
 
-```
+```groovy:script.groovy
   JCasC:
     defaultConfig: true
     configScripts: 
