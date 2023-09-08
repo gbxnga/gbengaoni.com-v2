@@ -1,0 +1,161 @@
+---
+title: Deploying and Scaling a Laravel Web App on AWS — Part 2
+summary: Deploy a scalable and highly available Laravel App on AWS
+date: '2018-12-11T13:28:22.655Z'
+categories: []
+keywords: []
+tags: ['AWS', 'Laravel', 'EC2']
+slug: /deploying-and-scaling-a-laravel-web-app-on-aws-part-2-1c03487a6d99
+---
+ 
+![Laravel App on AWS](/images/1__cHw6zbAivDFI__aZkeN1mjg.png)
+
+In the [first part of the article](https://gbengaoni.com/blog/Deploying-and-Scaling-a-Laravel-App-on-AWS-1349dcd7d17a) we successfully deployed a Laravel web application on **Amazon Elastic Cloud Compute (EC2)** and we connected it to a MySQL database instance provided by **Amazon Relational Database System(RDS).**
+
+[**Deploying and Scaling a Laravel App on AWS - Gbenga Oni**](https://gbengaoni.com/blog/Deploying-and-Scaling-a-Laravel-App-on-AWS-1349dcd7d17a "https://gbengaoni.com/blog/Deploying-and-Scaling-a-Laravel-App-on-AWS-1349dcd7d17a")[](https://gbengaoni.com/blog/Deploying-and-Scaling-a-Laravel-App-on-AWS-1349dcd7d17a)
+
+In this concluding part of the article, we will scale our Laravel Application on several **EC2** instances to ensure high availability. We will also configure an [**Amazon EC2 Auto Scaling Group**](https://docs.aws.amazon.com/autoscaling/ec2/userguide/AutoScalingGroup.html) to maintain the availability of our instances.
+
+### Scaling the Laravel App
+
+Firstly, let’s create a Amazon Machine Image (AMI) of our Ec2 instance which has all needed resources installed and properly configured. This AMI will be used as source for other instances that will be created in the scaling process, ensuring an exact replication and common behavior of all provisioned instances.
+
+**Create a Amazon Machine Image (AMI)**
+
+Navigate to Ec2 dashboard, select the instance and click **Actions**. **Select Image**, and then **Create Image**.
+
+![](/images/1__BwSSUfOtcWH7s6qFrv8RHQ.png)
+![](/images/1__pKSqplkocVLxkATcvQA1KQ.png)
+
+We will name the image `my-Laravel-AMI` and leave every other parameter as is. Click the **Create Image** button. Our AMI will now be created. It may take a few minutes before its ready but you can navigate to **AMIs** under **Images** to check the progress.
+
+Now that our AMI has been created, we will:
+
+1.  Create a fault-tolerant and highly available Laravel Web Application by provisioning several instances behind an **Amazon Elastic Load Balancer**. The Load Balancer will automatically distribute incoming traffic across multiple Ec2 instances running our Laravel Web App and also conduct periodic health checks on them, stopping traffic distribution to any one that fails the check.
+2.  Create an **Auto Scaling Group** to maintain the availability of our Laravel Application by scaling the instances in or out, based on different events such as high/low traffic request, high/low CPU utilization, failure of one or more provisioned instances.
+
+**Fault-tolerance and High Availability Architecture**
+
+We will create another Ec2 instance using the AMI created based off our initial Ec2 instance as source: Go back to instances and click on the **Create Instance** button.
+
+![](/images/1__cReBgTUhoPeoi7YEJiaJ4A.png)
+
+Go to **My AMIs** and select the `my-laravel-AMI` image we created earlier. Select the `t2.micro` instance type and the `launch-wizard-1` security groups. Leave every other parameters as is and launch the instance.
+
+![](/images/1__2NU__JAvoFgkbT7yOPSZfWw.png)
+
+Set **Number of instances** to four, which will make it a total of fiveLaravel instances running.
+
+You can use the previously created `myNVirginiaKeyPair` . Grab the Public IP of the instance when it launches and paste it in your browser tab. We have now created an exact replica of our Laravel Web App on four other Ec2 instances.
+
+Now that we have two different instances of Laravel running, we will create an Elastic Load Balancer:
+
+Navigate to **Load Balancers** under **Load Balancing**, on the EC2 dashboard. Click on the **Create Load Balancer** button. Select **Application Load Balancer.**
+
+In Step 1, name the Load Balancer `my-laravel-web-app-LB` then scroll down to **Availability Zones** and select `us-east-1a`, `us-east-1b`, `us-east-1c`, `us-east-1d` . This means, the Load balancer can route requests to instances in these four different availability zones. An Availability Zone is an isolated AWS location. “**Amazon** EC2 provides you the ability to place resources, such as instances, and data in multiple locations”.
+
+Click **Next** and skip **Configure Security Settings** to the third step where we will configure our Security Groups.
+
+![](/images/1__9sfonuVQgz__eRHOvM3RkZw.png)
+
+Select an existing security group and choose `default` and `launch-wizard-1` . Continue to Step 4: We will name our target group `my-laravel-web-app-TG` scroll down to **Advanced health check settings** and modify the parameters as in image below.
+
+![](/images/1__Os3R49QMDyhGmpWmcmDZqA.png)
+
+We will Register Targets in Step 5: scroll down to instances, select the five running instances and click **Add to Registered**
+
+![](/images/1__UFWNpyhK____E__fZkW0qgP3g.png)
+
+Review and created the Load Balancer. It should be up in a minute. Be sure you properly selected and “Add to registered” in step 5. Wait for it to provision(a change in state from `provisioning` to `active`)
+
+![](/images/1__uELj1zpm0vfUAFxnN2IYVA.png)
+
+Copy the **DNS** name of the **Application Load Balancer** we have just created and enter it in your browser. We have successfully created a Load Balancer that distributes traffic between our Laravel instances. You may decide to launch even more instances and add them to the `my-laravel-web-app-TG` Target Group. Our Application Load Balancer will immediately start distributing traffic to them too.
+
+How do we know for sure our Load Balancer is distributing traffic between these instances? We will confirm this by `SSH` into each of the instances and we will edit the `/var/www/html/resources/views/home.blade.php` file in them, modifying the content and adding `instance 1` and `instance 2` , and so on.
+
+Once you’ve established an `ssh` connection, run
+```
+sudo su
+
+nano `/var/www/html/resources/views/home.blade.php`
+```
+Modify the `home.blade.php` file in each of the five instances from:
+```
+<div class="card-header">Dashboard</div>
+```
+To:
+```
+<div class="card-header">Instance ONE/TWO/THREE/FOUR/FIVE Dashboard</div>
+```
+![](/images/1__qADVFB3RwJDQBJ8RfV8W1w.gif)
+
+The Load Balancer now distributes traffic to our five Laravel instances. In the event of failure of any of the five instances(which you can simulate by stopping any of them), the load balancer detects this through its periodic health check and stops sending traffic to the failed instance(s). This ensures high availability of our Laravel Web Application.
+
+**Auto Scaling our Laravel Application**
+
+Imagine a scenario where the web application needs to run on at least five instances in order to effectively serve a predictable, steady number of user traffic. If one of more of these instances failed, the remaining healthy instances may not be able to successfully handle incoming traffic.
+
+Also, in the event that user traffic suddenly tanks, and most of the instances are rendered redundant, would the cloud engineer have to manually stop these instances to save cost, and start them again if the need be?
+
+There’s a need for automatic scaling in and out of our Ec2 instances. **Amazon Ec2 Auto Scaling** can help maintain the availability of our Laravel App and also allow us to automatically add or remove instances based on constraints and conditions specified.
+
+We will setup an Auto Scaling group for our instances:
+
+First, terminate all five instances we initially launched. Don’t worry about having to setup and configure instance(s) all over again. We already created an AMI of our Ec2 instance with our Laravel App installed, so we will be reusing the `my-Laravel-AMI` AMI.
+
+Navigate to **Auto Scaling Groups** under **Auto Scaling** on the Ec2 dashboard. Click on the **Create Auto Scaling Group** button.
+
+![](/images/1__muVinTHkuFaX__jL0UazwTA.png)
+
+We will have to create a **Launch Configuration**, an instance configuration template that an **Auto Scaling** group uses to launch EC2 instances.
+
+Go to **My AMIs** and select the `my-Laravel-AMI` AMI we initially created. Continue to Step 2 and choose `t2.micro` instance type.
+
+![](/images/1__c__zjcfM7SgZ2__XDRwYIs6A.png)
+
+We will name the **Launch Configuration** `my-Laravel-Launch-Configuration` . Continue to Step 5 (Storage should be automatically added in step 4) and select the existing`launch-wizard-1` **Security Group**.
+
+Continue to **Review** then Create launch configuration. Choose the existing `myNVirginiaKeyPair` key pair. We can now create our Auto Scaling Group with the `my-Laravel-Launch-Configuration`.
+
+![](/images/1__rCoZKPY3TyXEO1cKkdSrTg.png)
+
+Name the group `myLaravelASG` and select a **Group Size** of 5 instances. Click on the **Subnet** and select `us-east-1a`, `us-east-1b`, `us-east-1c`, `us-east-1d` availability zones. Scroll down to **Advance Details**:
+
+![](/images/1__qnAkpXFNpONJl6l6OsCLyw.png)
+
+Check **Load Balancing** and select the `my-laravel-web-app-TG` . Remember the `my-laravel-web-app-LB` we initially created is attached to the `my-laravel-web-app-TG` auto scaling group. Our **Auto Scaling Group** will automatically make use of it.
+
+**The Health Check Grace Period** is the length of time that **Auto Scaling** waits before checking an instance’s health status; the default is 300, but set it to 60 seconds this time. Continue to **Configure scaling policies**.
+
+If we decide to _keep the group at the initial size_, Auto Scaling will only maintain a fleet of five instances, that is, if two instances became faulty, it will automatically spin up two newer, healthier instances.
+
+If we decide to **_Use scaling policies to adjust the capacity of this group_** instead, we will define policies that tell **Auto Scaling** what to do in certain scenarios, for instance: if `CPU utilization` is more than 80%, spin up additional instances to consolidate the ones on the ground.
+
+We will stick to the former — _keep the group at the initial size —_ because we want to only ensure we always have five instances of our Laravel App running_._
+
+Continue to **Configure Notifications**. This helps you send notifications such as SMS, email to the specified endpoint when certain events occur. But this is outside the purview of this tutorial, so skip to the last step — Review — and create the **Auto Scaling Group**.
+
+![](/images/1__vJx9sFRAdOxOY1RteQe4XQ.png)
+
+On creation, our `myLaravelASG` **Auto Scaling Group** will automatically spin up five instances of our Laravel App.
+
+Lets simulate failure of two instances and examine how our **Auto Scaling Group** will react and handle the situation.
+
+It immediately detects the instance is unhealthy:
+
+![](/images/1__9kq6c1GiKrkv8x9J1KF0qw.png)
+
+And starts spinning up a newer, healthier one:
+
+![](/images/1__Q8pc__1hxs5WZ8atKlUFMZQ.png)
+
+It continues to do this for the second instance that was terminated.
+
+### **Conclusion**
+
+In this article, we created an **AMI** for our Laravel instance. We also created an **Amazon Elastic Load Balancer** with several instances of our Laravel app sitting behind it. Lastly, we created an EC2 **Auto Scaling Group** that helped maintain the availability of our Laravel web application.
+
+Lastly, If you are looking to deploy your Laravel Application on Kubernetes, here’s how:
+
+[**Deploy a Laravel App to Amazon EKS in 5 minutes**](https://gbengaoni.com/blog/Deploy-a-Laravel-App-to-Amazon-EKS-in-5-minutes-a94a41436157 "https://gbengaoni.com/blog/Deploy-a-Laravel-App-to-Amazon-EKS-in-5-minutes-a94a41436157")[](https://gbengaoni.com/blog/Deploy-a-Laravel-App-to-Amazon-EKS-in-5-minutes-a94a41436157)

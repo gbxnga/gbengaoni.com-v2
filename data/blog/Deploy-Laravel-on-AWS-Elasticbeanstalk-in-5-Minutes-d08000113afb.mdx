@@ -1,0 +1,164 @@
+---
+title: Deploy Laravel on AWS Elasticbeanstalk in 5 Minutes
+summary: >-
+  Deploy a Laravel Application on Elasticbeanstalk, update and connect it to a
+  database
+date: '2019-03-04T09:21:47.514Z'
+categories: []
+tags: ['AWS', 'Laravel', 'EC2', 'ELasticbeanstalk']
+keywords: []
+slug: /deploy-laravel-on-aws-elasticbeanstalk-in-5-minutes-d08000113afb
+---
+ 
+![Deploy Laravel on AWS Elasticbeanstalk](/images/1__qwo6Vjbin7CRz__3xNQWpVA.png)
+
+### Introduction
+In this quick tutorial, you will learn how to deploy a Laravel application on AWS elasticbeanstalk. By the end of the tutorial, you will be able to deploy a Laravel application on Elasticbeanstalk, update the application and also connect it to a database.
+
+> AWS Elastic Beanstalk is an orchestration service offered from Amazon Web Services for deploying infrastructure which orchestrates various AWS services, including EC2, S3, Simple Notification Service, CloudWatch, autoscaling, and Elastic Load Balancers.
+
+Roll up your sleeves and let’s get our hands dirty!
+
+### Install Laravel
+
+We create a fresh Laravel application using composer
+
+```
+composer create-project --prefer-dist laravel/laravel myLaravelApp
+```
+
+#### Start Laravel
+
+We will start Laravel on the local server
+```
+cd `myLaravelApp` && php artisan serve
+```
+
+The Laravel Application should now be running on [_http://localhost:8000_](http://localhost:8000)
+
+![](/images/1__AYwFa17AojrxrhmavhhfTg.png)
+
+### Setup AWS Elasticbeanstalk Environment
+
+If you do not already have an AWS account, you need to sign up [**here**](https://portal.aws.amazon.com/billing/signup#/start). This will give you access to Elasticbeanstalk and other AWS Services.
+
+#### Create an Elasticbeanstalk Application
+
+Open the AWS console and navigate to the Elasticbeanstalk service.
+
+![](/images/1__AgvV1Y1DPbNP__UMwfPrkZA.png)
+
+Click the **Get Started** button. You will be taken to an application creation page.
+
+![](/images/1__WqjnSMiDCMUNIQhXVTV1Xw.png)
+
+Give a name to your application. In this case, i have named mine `my-laravel-app`. Also, select `PHP` as the platform. Then select “**Upload your code**” in the application code section.
+
+### Prepare Laravel Application for Deployment
+
+#### Zip Laravel Application
+
+We have to create a zip file of our entire Laravel application files, **excluding the vendor folder**. Note that you should not zip the parent `myLaravelApp` folder, instead create a zip of the application files themselves.
+
+Once the zip file is ready, click on the “**Upload**” button to upload a zip file containing your Laravel application code.
+
+![](/images/1__tQ1RkKkSLIxbdAVsKvSnNg.png)
+
+You will be prompted to either upload a local file or a public S3 URL. Choose “**Local file**” and click the “**Upload**” button to upload the zip file.
+
+### Deploy Laravel to Elasticbeanstalk Environment
+
+Now that the Zip file is successfully uploaded, click the “**Create Application**” button. Elasticbeanstalk will start provisioning the Laravel application.
+
+![](/images/1__7JJNbgv0gHyiLQJr99aeEg.png)
+
+After a few minutes, the Laravel application should be successfully deployed.
+
+![](/images/1__eyiB3tlCUCm78gVjr028XQ.png)
+
+The top right corner of the dashboard shows a URL link to the deployed Laravel application. Click on it to navigate to the page.
+
+![](/images/1__y2b__F__XMqv3Hp7AC6eWJmA.png)
+
+You should see a “403 Forbidden” error on the provided link, saying “permission to access / on the server isn’t granted”.
+
+#### Update Application Root Folder
+
+We need to set the public folder as the root folder. Go back to the Application dashboard and click on “**Configurations**”, then modify Software.
+
+![](/images/1__acrXAmEaXuzkF__XBhnOXYQ.png)
+
+Update the “Document root” to `/public`, then click “**Apply**”. Elasticbeanstalk will then update the environment with the new configuration. That should take a few seconds.
+
+Now go back to the browser tab and refresh it.
+
+![](/images/1__zFGTPInlJ__hrQvxJS4APiQ.png)
+
+Our Laravel app is now Live!
+
+### Update Laravel Application on Elasticbeanstalk
+
+So you may be wondering, how do you update the deployed Laravel application.
+
+Lets make a quick update to the app.
+
+Go to your favorite IDE and edit the welcome screen (`welcome.blade.php`). Change “Laravel” word to “Laravel — V2”, save it, then zip the files again.
+
+Now that we have zipped the updated Laravel app, Navigate to Elasticbeanstalk dashboard and click on the `my-laravel-app` application. Select “**Application Versions**”. You will see the initially uploaded zip file.
+
+![](/images/1__ZFgrABME2Y8gKoPGvN8KLw.png)
+
+Click the “**Upload**” button to upload a newer version of the application.
+
+![](/images/1__AXSUPSo__LLENmhNBUK4xpg.png)
+
+Add a Version label, a description, then choose the newly updated zip file for the app, then click “**Upload**”
+
+A new version of the Laravel app will now be added to the list of app versions. Elasticbeanstalk lets you choose which version of your application you may want to deploy at anytime. You can also choose to rollback to an earlier version of the app by simply redeploying the source.
+
+![](/images/1__JgE3uriUFm57QfWtcXVxqQ.png)
+
+Select the new version and click “**Deploy**”. Elasticbeanstalk will now begin the process of updating the Laravel application. Wait a few seconds and everything should be ready.
+
+Go back to the browser tab and refresh the page:
+
+![](/images/1__j4KdlQwWbDbVkua7ckoOhg.png)
+
+We have successfully deployed a new version of the Laravel Application.
+
+### Connecting to a Database
+
+There are two ways to connect your application on Elasticbeanstalk to a database:
+
+1.  **Using an internal RDS database**: AWS Elasticbeanstalk provides an internal database for your application, but with a caveat — the database gets deleted too if you delete your Elasticbeanstalk app environment. It is therefore more suitable for development and testing purposes, while its discouraged for production usage.
+2.  **Using an external database**: Connect to an external database, be it a standalone RDS or a remote database, with required endpoints and credentials, through the environmental variables Elasticbeanstalk provides or through the `.env` file in the Laravel application.
+
+#### Provision an Internal Elasticbeanstalk RDS Database
+
+Go to the Application dashboard and click on “**Configurations**”, then modify Database.
+
+![](/images/1__2nDCcztlChmG5epjdhK0kw.png)
+
+You are prompted to choose the type of database you will like provisioned. Select the **Mysql** engine with a `t2.micro` database instance class. Choose a username and a password with which you will access the database. Select `delete` for retention and set Availability to `Low`. Now click “**Apply**”. Elasticbeanstalk will begin to provision the database. This may take a few minutes.
+
+![](/images/1__SQWZ7ZErhHVU157dCjsoWw.png)
+
+Once the database is provisioned, you will see a link to the database endpoint. You can now use this endpoint, together with the other credentials(username, password e.t.c) to connect to the database.
+
+The procedure to connect to the internal database is the same for connecting to the external database — pass the credentials to the environmental properties of the Application.
+
+#### Connect Elasticbeanstalk Application to External/Internal Database
+
+The properties specified in the Elasticbeanstalk environmental properties usually overrides the value for the same property specified in the Laravel `.env` environment file.
+
+Go to the Application dashboard and click on “**Configurations**”, then modify Software. Scroll to the bottom:
+
+![](/images/1__Mk2hDSbmp5rruxteYSgP4Q.png)
+
+Specify the name-value pairs for the environment variables. This is where you provide the endpoint for the internal or external database and all other database credentials. Once that’s done, click “**Apply**”.
+
+You have now successfully connected the Laravel Application on Elasticbeanstalk to a database.
+
+### Conclusion
+
+In this tutorial, we created a fresh Laravel application and deployed it to AWS Elasticbeanstalk. We also created and deployed different versions of this application. Lastly, we connected it to an internal and external database, through the software environment properties.

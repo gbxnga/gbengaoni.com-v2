@@ -1,0 +1,220 @@
+---
+title: 'Progressive Web Apps: What they are & getting started in 5 minutes'
+summary: >-
+  You are probably familiar with the concept of Single Page Apps(SPAs) but they
+  are certainly not to be conflated with Progressive Web Apps…
+date: '2018-03-07T17:28:43.967Z'
+categories: []
+keywords: []
+tags: ['PWA', 'JavaScript']
+slug: >-
+  /progressive-web-apps-what-they-are-getting-started-in-5-minutes-d5f35b0ad3a6
+---
+
+![](/images/1__bTSqXb7gEJ5pfJHTqETcYA.png)
+
+You are probably familiar with the concept of Single Page Apps(SPAs) but they are certainly not to be conflated with Progressive Web Apps. Although they overlap, there are distinctive features peculiar to Progressive Web Apps.
+
+PWAs are poised to replace chrome apps. The Chrome **Web** Store which was launched in 2010, was the heart for installing **apps**, extensions, and themes for Chrome. Google made it known in 2016 of its plans to kill Chrome **apps** on Windows, Mac, and Linux in 2018.
+
+Progressive Web Apps work just like your native apps but the main driver here is the Web browser. PWAs are characterized by a number of features, including but not limited to:
+
+*   **Responsiveness**: They render well on variety of screen sizes, from your mobile phone to your tablet and PC.
+*   **Ability to work Offline** : Although there may be limited access to some features while the device is offline, PWAs allow access to some features of the app through initially cached resources.
+*   **Presence of a Service Worker**: The service worker is an intermediary between the server and the client side. All requests are fetched through the service worker. It also allows for seamless integration of updates in the PWA.
+*   **A Manifest file**: They have a web app manifest — a JSON file, usually named “_manifest.json_”. Here you can specify your app’s appearance on the user’s home screen — where they will usually find their apps, and also its appearance at launch
+
+**How PWAs Work**: The service worker is registered on the clients’ first visit to your website and the application shell (Your HTML, CSS and JavaScript files) is loaded and cached. The app sends requests to the server through (_XMLHttpRequest_ of the Fetch API) and performs action(s) based on the server’s response, most times changing and updating the app shell with the data received. Request for resources that have been previously cached are loaded from the client’s device by the service worker through the Cache API, in no second. Requests are Asynchronous thus shedding the need for a page reload on each request.
+
+### Getting Started:
+```
+*   Building the App Shell (Fast loading)
+*   Registering a service worker and caching resources (Offline experience)
+*   Creating a manifest (Home Screen)
+```
+1.  **Building the App Shell**: Your App shell contains the basic, minimum HTML, CSS and JS your page needs to render the interface. Basically a skeleton which is then populated by data using javascript. This Application shell is cached by the Service Worker and loaded instantly on repeat visits. The are delivered instantly when needed as they are not loaded from the server. Only dynamic data needed to populate the app shell are fetchedfrom the server.
+
+```
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>MyPWA</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="src/main.css" />
+  </head>
+
+  <body style="background:#ececec">
+
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">MyPWA</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse" aria-expanded="false" style="height: 1px;">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Homepage</a></li>
+            <li><a href="#link1">Link 1</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <div class="container" style="margin-top:70">
+
+      <div class="shell">
+        <h1 class="title">Homepage</h1>
+        <hr/>
+        <div class="data"></div>
+      </div>
+
+    </div><!-- /.container -->
+
+</body>
+</html>
+```
+
+The index.html file is cached on first load by the service worker and rendered from the cache on repeat visits, even when offline. The Cache interface offers a storage mechanism for Request/Response object pairs that are cached, for example as part of the Service Worker life cycle.
+
+![](/images/1__tZzq2OhIN1rxQNMzvgq7vQ.jpeg)
+
+**Registering a Service Worker**: A Service Worker is the crux of a Progressive web app. It is a Javascript file that is run in the background by the browser, independent of the webpage. The major features of a Service worker are Background synchronization and Push notifications. Server requests pass through the service worker, many of the responses being cached and reserved on subsequent request.
+
+To register your Service Worker, you need to include the code below in your page, which tells the browser where the ServiceWorker javascript file is located on your server. This creates a new Service worker instance, triggering an install event the Service worker then responds to. (Note that HTTPS connection is required):
+```
+if ('serviceWorker' in navigator) {
+     navigator.serviceWorker
+        .register('sw.js')
+        .then(function() {
+          console.log('Service Worker Registered');
+        })
+}
+```
+
+We will turn to our Service Worker file named ‘sw.js’ in the root of our directory, and specify installation directives:
+
+*   **Install Directive**: This installs the services worker, opens the browser cache with the _caches.open()_ function that takes the cache name as argument, then adds already specified files to cache storage with the _cache.addAll()_ function. The _FilesToBeCached_ variable is an array of links to all resources we want cached.
+
+```
+
+var cacheName = 'myPWA-cache-files-v4.0.5';
+var filesToBeCached = [
+    'src/css/main.css',
+    'src/js/app.js',
+    'src/js/user.js',
+]
+self.addEventListener(‘install’, function(event) {
+    self.skipWaiting();
+    event.waitUntil(
+       caches.open(cacheName).then(function(cache) {
+           return cache.addAll(filesToBeCached);
+       })
+    );
+});
+```
+
+*   **Fetch Directive**: This inspects the event that triggered the request and checks to ascertain its availability in the cache. If so, it responds with the cached version instead making another server request.
+```
+var cacheName = 'myPWA-cache-files-v4.0.5';
+var filesToBeCached = [
+    'src/main.css',
+    'src/app.js',
+    'src/user.js',
+]
+self.addEventListener(‘install’, function(event) {
+    self.skipWaiting();
+    event.waitUntil(
+       caches.open(cacheName).then(function(cache) {
+           return cache.addAll(filesToBeCached);
+       })
+    );
+});
+
+self.addEventListener(‘fetch’, function(event) {
+    event.respondWith(
+        caches.match(event.request).then(function(response) {
+            return response || fetch(event.request);
+        })
+    );
+});
+```
+Now that the service worker has been installed, if you inspect your webpage element, navigating to the application tab, clicking on the service worker on the sidebar, you will see an information about the installed service worker and also your cached files on the bottom-left:
+
+![Chrome console showing installed service worker and cached files](/images/1__Vx8Vgo2qFBIUtgWdMzf__gQ.png)
+
+**3**. Creating a Manifest file**: create a JSON file in the root directory and name it ‘_manifest.json_’. We will tell the browser the location of our app manifest by including a link element with the manifest’s name and directory on the server, in the html head tag.
+
+```
+<link rel="manifest" href="manifest.json">
+```
+
+Here’s what our manifest file will looks like:
+```
+{
+  "app": {
+    "background": {
+      "scripts": ["src/app.js"]
+    }
+  },
+  "manifest_version": 2,
+  "name": "MyAppName",
+  "version": "versionString",
+  "default_locale": "en",
+  "description": "MyAppName: MyAppDescription",
+  "short_name": "AppName",
+  "start_url": "/app",
+  "theme_color": "#FF4C00",
+  "display": "standalone",
+  "background_color": "#FF4C00",
+  "icons": [
+    {
+      "src": "src/icons/logo 48.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "src/icons/logo 96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "src/icons/logo 144.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    }
+  ]
+}
+```
+The manifest file specifies various properties of the PWA; the “icons” property contains a link to 3 different versions of our app logo, this will be used by the browser to render an app-like feel and appearance.
+
+When most browsers detect a well formatted and valid manifest file, they provide the user an option of adding the app to their Home screen, but you can also trigger this manually by opening the browser menu and navigating to the “Add to Home Screen” option. This will create an app icon with the properties specified in the manifest file on the user’s home screen.
+
+![](/images/1__0PwHvYR3fl0tl0gDOj3Zrg.jpeg)
+
+If you’re accessing the app on your PC, you can check the manifest information on the application tab, there you can see a “Add to Home Screen” button on the right-hand side:
+
+![](/images/1__buDKq9FS0qZyN0TMpQFQKA.png)
+
+The final look of our Progressive Web App, having two links — the homepage and a users page (#link1) that uses the FetchAPI to get random user data and populates the shell with the data can be found [**Here**](https://qq07302rl4.csb.app/), and the CodeSandbox Implementation code [**Here**](https://codesandbox.io/s/qq07302rl4)
+
+To test the offline functionality of the app, turn off data access to the browser and reload the page. You will find that the app still works without network access.
+
+### **Conclusion**:
+
+In this article, we have built a simple Progressive Web App and we’ve also seen how we can build apps that work offline with the help of the Service Worker and browser Cache. The Service Worker intercepts all requests and determines whether to fetch them from the server or browser cache in the case that the said resources have been initially cached. You can check out the source code here:
+
+You can find the source code here:  [**gbxnga/MyPWA**](https://github.com/gbxnga/MyPWA "https://github.com/gbxnga/MyPWA")[](https://github.com/gbxnga/MyPWA)

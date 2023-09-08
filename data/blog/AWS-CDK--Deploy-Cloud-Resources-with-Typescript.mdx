@@ -1,0 +1,326 @@
+---
+title: 'AWS CDK: Deploy Cloud Resources with Typescript'
+summary: >-
+  Deploying cloud resources with a programming language | Introduction to AWS Cloud Development Kit: Deploy your AWS Infrastructure with Typescript
+date: '2020-03-20T18:48:28.092Z'
+categories: []
+tags: ['Infrastructure as Code', 'AWS CDK', 'TypeScript']
+keywords: []
+slug: aws-cdk-deploy-cloud-resources-with-typescript-98d969d0f5f9
+---
+
+![](/images/1__kzsPlCK6MgEL0roPs1Ji__g.png)
+
+
+### Introduction
+In this post, I will describe how to use programming languages to provision resources/infrastructure on AWS.
+
+We will use Typescript to deploy an AWS EC2 instance and an S3 bucket. We will then updated these resources, and finally delete them.
+
+The AWS Cloud Development Kit (AWS CDK), an open source framework, enables the provision of cloud resources using your everyday programming resources.
+
+### Requirements
+1\. AWS Account
+
+2\. AWS CLI configured with default account
+
+3\. Node.js (>= 10.3.0) & NPM
+
+4\. TypeScript (>= 2.7)
+
+### Install AWS Cloud Development Kit
+The AWS CDK commandline tool are developed in Typescript and run on Node.js. We need to install AWS CDK globally:
+```
+npm install -g aws-cdk
+```
+Check that CDK is installed and ready for use:
+```
+cdk --version
+```
+### Set up the Application
+Let's create the application
+
+#### Create Application Directory
+Create the application directory names my-cdk and navigate to it:
+```
+mkdir my-cdk
+cd my-cdk
+```
+#### Initialize Application
+The cdk init command is used to initialize a CDK application using the below format.
+```
+cdk init --language LANGUAGE [TEMPLATE]
+```
+Initialize the application:
+```
+cdk init --language typescript
+```
+The above command will create a CDK application with a Typescript language. Other programming language options include Python, Java and C#.
+
+AWS CDK initialization
+
+#### Compile the Application
+Compile the prgram with the following command:
+```
+npm run build
+```
+The app will now be compiled.
+
+You can get a list of stacks in the app:
+```
+cdk ls
+```
+You should see:
+```
+MyCdkStack
+```
+### Adding Amazon EC2 to AWS CDK Application
+
+Install the @aws-cdk/aws-ec2 package
+
+```
+npm install @aws-cdk/aws-ec2
+```
+Define Amazon EC2 Instance in the Stack:
+`lib/my-cdk-stack.ts`
+
+```
+import * as cdk from '@aws-cdk/core';
+import ec2 = require('@aws-cdk/aws-ec2'); 
+
+export class MyCdkStack extends cdk.Stack {
+  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    const vpc = new ec2.Vpc(this, 'MyCDK-VPC');
+
+    const securityGroup = new ec2.SecurityGroup(this, 'MyCDKSecurityGroup', {
+      vpc,
+      securityGroupName: "MyCDK-SG",
+      description: 'Allow ssh access to ec2 instances from anywhere',
+      allowAllOutbound: true 
+    });
+
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(), 
+      ec2.Port.tcp(22), 
+      'allow public ssh access'
+    )
+
+    const linux = new ec2.AmazonLinuxImage({
+      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX,
+      edition: ec2.AmazonLinuxEdition.STANDARD,
+      virtualization: ec2.AmazonLinuxVirt.HVM,
+      storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
+    });
+
+    new ec2.Instance(this, 'MyCDKInstance', {
+      vpc,
+      machineImage: linux,
+      instanceName: 'mycdkinstancename',
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+
+    })
+
+  }
+}
+```
+#### Code Breakdown
+##### Create a new VPC
+A VPC is a required property of the instance so we create a new one:
+```
+const vpc = new ec2.Vpc(this, 'MyCDK-VPC');
+```
+##### Create a Security Group
+We create a Security Group on the VPC
+```
+    const securityGroup = new ec2.SecurityGroup(this, 'MyCDKSecurityGroup', {
+      vpc,
+      securityGroupName: "MyCDK-SG",
+      description: 'Allow ssh access to ec2 instances from anywhere',
+      allowAllOutbound: true 
+    });
+```
+##### Create Addressing Rule for the Security Group
+```
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(), 
+      ec2.Port.tcp(22), 
+      'allow public ssh access'
+    )
+```
+##### Describe a Machine Image
+We described a machine image with properties like virtualization and storage.
+```
+    const linux = new ec2.AmazonLinuxImage({
+      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX,
+      edition: ec2.AmazonLinuxEdition.STANDARD,
+      virtualization: ec2.AmazonLinuxVirt.HVM,
+      storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
+    });
+```
+##### Create the Instance
+Finally, we use the instance constructor to create an instance names MyCDKInstance:
+```
+    new ec2.Instance(this, 'MyCDKInstance', {
+      vpc,
+      machineImage: linux,
+      instanceName: 'mycdkinstancename',
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+
+    })
+```
+### Adding S3 to AWS CDK Application
+Install the @aws-cdk/aws-s3 package
+```
+npm install @aws-cdk/aws-s3
+```
+Import the package:
+```
+import s3 = require('@aws-cdk/aws-s3');
+Then define the AWS Bucket in the Stack in the MyCdkStack class constructor:
+
+    new s3.Bucket(this, 'MyCDKBucket', {
+      versioned: true,
+      bucketName: 'mycdkbucketname',
+      publicReadAccess: true
+    });
+```
+We have specified 3 properties for the bucket: versioned and bucketName. The versioned property being set to true enables versioning for the S3 bucket. The publicReadAccess property that allows public read access to the objects in the bucket.
+
+The finally code should look like this:
+```
+import * as cdk from '@aws-cdk/core';
+import ec2 = require('@aws-cdk/aws-ec2');
+import s3 = require('@aws-cdk/aws-s3');
+
+export class MyCdkStack extends cdk.Stack {
+  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+    super(scope, id, props);
+
+    const vpc = new ec2.Vpc(this, 'MyCDK-VPC');
+
+    const securityGroup = new ec2.SecurityGroup(this, 'MyCDKSecurityGroup', {
+      vpc,
+      securityGroupName: "MyCDK-SG",
+      description: 'Allow ssh access to ec2 instances from anywhere',
+      allowAllOutbound: true 
+    });
+
+    securityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(), 
+      ec2.Port.tcp(22), 
+      'allow public ssh access'
+    )
+
+    const linux = new ec2.AmazonLinuxImage({
+      generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX,
+      edition: ec2.AmazonLinuxEdition.STANDARD,
+      virtualization: ec2.AmazonLinuxVirt.HVM,
+      storage: ec2.AmazonLinuxStorage.GENERAL_PURPOSE,
+    });
+
+    // The code that defines your stack goes here
+    new ec2.Instance(this, 'MyCDKInstance', {
+      vpc,
+      machineImage: linux,
+      instanceName: 'mycdkinstancename',
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
+
+    })
+
+    new s3.Bucket(this, 'MyCDKBucket', {
+      versioned: true,
+      bucketName: 'mycdkbucketname',
+      publicReadAccess: true
+    });
+  }
+}
+```
+### Deploy Infrastructure with AWS CDK
+```
+npm run build
+```
+Synthesize Cloudformation Template
+Synthesize an AWS Cloudformation Template for the CDK Application with the following command:
+```
+cdk synth
+```
+This process executes the CDK application and generates a corresponding Cloudformation template for the application.
+
+The Cloudformation Template is outputed. You can then see the resources we have described.
+
+To deploy the application, run:
+```
+cdk deploy
+```
+Make sure you are running the command in the application directory and that you have configured your AWS CLI with your account credentials.
+
+Depending on whether the deployment will change the infrastructure security posture or not, you may be promted with the information about such changes and required to confirm them before the stack is deployed.
+
+
+
+Type in y then click ENTER. The Stack is now deploying.
+
+
+
+The deploy command synthesizes an AWS CloudFormation template from the appplication's stack, and then uses AWS CloudFormation to deploy it in your AWS account.
+
+Wait for some moment while Cloudformation deploys the resources.
+
+Navigate to AWS console in your browser, the open Cloudformation, you should see the Stack already deployed with the described resources.
+
+
+
+### Modify AWS CDK Stack
+Configure the bucket to remove public access by setting the publicReadAccess property to false:
+```
+    new s3.Bucket(this, 'MyCDKBucket', {
+      versioned: true,
+      bucketName: 'mycdkbucketname',
+      publicReadAccess: false
+    });
+```
+Update EC2 instance type from `t2.micro` to `t2.medium`:
+```
+    new ec2.Instance(this, 'MyCDKInstance', {
+      vpc,
+      machineImage: linux,
+      instanceName: 'mycdkinstancename',
+      instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MEDIUM),
+
+    })
+```
+Compile:
+```
+npm run build
+```
+Evaluate differences between the current changes and the deployed app, think Cloudformation Change Set:
+```
+cdk diff
+```
+
+The diff shows that the public read access of the S3 bucket is now removed from the bucket policy and the InstanceType changed from t2.micro to t2.medium.
+
+Deploy changes:
+```
+cdk deploy
+```
+The Stack will now be updated
+
+
+
+### Delete CDK Stack
+To teardown and delete the applications resources:
+```
+cdk destroy
+```
+You will be asked if you are sure. Type yes and click ENTER.
+
+The Stack and resources will now be deleted.
+
+
+
+### Conclusion
+In this post, you have learned about AWS Cloud Development Kit. You created a CDK application in Typescript then went ahead to describe and deploy the resources in the Stack.
+

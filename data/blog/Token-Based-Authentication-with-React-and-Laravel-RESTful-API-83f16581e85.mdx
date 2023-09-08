@@ -1,0 +1,766 @@
+---
+title: Token-Based Authentication with React and Laravel RESTful API
+summary: Build a React App powered by a Laravel Backend
+date: '2018-04-03T16:44:59.172Z'
+categories: []
+keywords: []
+tags: ['Laravel', 'React', 'JWT', 'REST']
+slug: >-
+  /token-based-authentication-with-react-and-laravel-restful-api-83f16581e85
+---
+ 
+![React and Laravel](/images/1__WBxbm9nB4D4F4xePkAmYRA.png)
+
+### Introduction 
+
+Authentication and Authorization remain important elements of every software. Most web applications you encounter utilize a cookie-based form of AuthZ and AuthN, where upon signing in, the user is given a cookie with a peculiar identification that links them to a session storage residing on the server. This cookie is submitted with each user request and the server coordinates access to its resources based on the ID and access level of the user initiating the request.
+
+A Token is a meaningless chunk of data which when combined with the right tokenization system becomes an invaluable application security component. With token based Authentication, each request for protected resources to the server is sent alongside a signed token initially received at authentication point, upon which the server verifies its legibility and authenticity, determining whether or not to grant said request.
+
+Most Single Page Applications(SPAs) built with React and other javascript frameworks make use of token based AuthZ as many of them are backed by a REST API — an application programming interface that uses HTTP request to perform GET, POST, PUT and DELETE operations on data.
+
+**JSON Web Token (JWT)** is a compact URL-safe means of representing claims to be transferred between two parties. The claims in a **JWT** are encoded as a JSON object that is digitally signed using JSON Web Signature (JWS). JWTs can be signed using a secret (with the HMAC algorithm) or a public/private key pair using RSA.
+
+### Creating the Laravel API
+**STEP 1**: create a fresh laravel project by typing this into your terminal that has composer already installed:
+```
+composer create-project --prefer-dist laravel/laravel my-project
+```
+**STEP 2**: navigate to the my-project folder using “cd my-project” where we will Install tymon/jwt-auth package in our laravel application:
+```
+composer require tymon/jwt-auth
+```
+Update: If you are running Laravel 5.8, you will most likely encounter an incompatibility issue with Carbon 2 . Here’s a solution:
+
+Add **“tymon/jwt-auth”: “1.0”** to your `composer.json` file and run `composer update`.
+
+**STEP 3**: Lets navigate to our **config/app.php** file and specify the service provider and aliases:
+```
+
+<?php
+
+'providers' => [
+            ....
+            Tymon\JWTAuth\Providers\JWTAuthServiceProvider::class,
+            //Tymon\JWTAuth\Providers\LaravelServiceProvider::class,
+],
+
+'aliases' => [
+        
+          ....
+          'JWTAuth' => Tymon\JWTAuth\Facades\JWTAuth::class,
+],
+```
+
+**STEP 4**: Now we will publish the configuration file using the following command:
+```
+php artisan vendor:publish
+```
+This generates a **config/jwt.php** file similar to this but well commented:
+```
+
+<?php
+
+return [
+
+    'secret' => env('JWT_SECRET', 'changeme'),
+    'ttl' => 60*24*30*6,
+    'refresh_ttl' => 20160,
+    'algo' => 'HS256',
+    'user' => env('JWT_AUTH_TABLE', 'App\User'),
+    'identifier' => 'id',
+    'required_claims' => ['iss', 'iat', 'exp', 'nbf', 'sub', 'jti'],
+    'blacklist_enabled' => env('JWT_BLACKLIST_ENABLED', false),
+    'providers' => [
+
+        'user' => 'Tymon\JWTAuth\Providers\User\EloquentUserAdapter',
+        'jwt' => 'Tymon\JWTAuth\Providers\JWT\Namshi',
+        'auth' => 'Tymon\JWTAuth\Providers\Auth\Illuminate',
+        'storage' => 'Tymon\JWTAuth\Providers\Storage\Illuminate',
+
+    ],
+
+];
+```
+`jwt.php`
+
+**STEP 5**: We will generate a secret key by running the following command
+
+Laravel 5.4 or earlier:
+```
+php artisan jwt:generate
+```
+Laravel 5.5 or later:
+```
+php artisan jwt:secret
+```
+Now if you run either of the above command and you get an error of this sort, which is peculiar to laravel 5.5 and later versions:
+```
+“Method Tymon\JWTAuth\Commands\JWTGenerateCommand::handle() does not exist”
+```
+You may need to install the dev version of the package with the following command:
+```
+composer require tymon/jwt-auth:dev-develop --prefer-source
+```
+Now refer to our earlier config/app.php file where we registered the service provider, uncomment
+```
+Tymon\JWTAuth\Providers\LaravelServiceProvider::class
+```
+for
+```
+Tymon\JWTAuth\Providers\JWTAuthServiceProvider::class
+```
+Then regenerate the jwt key by rerunning the following command:
+```
+php artisan jwt:secret
+```
+**STEP 6**: We need to create a middleware “jwtMiddleware.php” for our JSON Web Token that will validate tokens accompanying requests to the server:
+
+```
+<?php
+namespace App\Http\Middleware;
+
+use Closure;
+use JWTAuth;
+use Exception;
+
+class jwtMiddleware
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
+     */
+    public function handle($request, Closure $next)
+    {
+        try {
+            $user = JWTAuth::toUser($request->input('token'));
+        } catch (Exception $e) {
+            if ($e instanceof \Tymon\JWTAuth\Exceptions\TokenInvalidException){
+                return $next($request);
+                return response()->json(['error'=>'Token is Invalid']);
+            }else if ($e instanceof \Tymon\JWTAuth\Exceptions\TokenExpiredException){
+                return $next($request);
+                return response()->json(['error'=>'Token is Expired']);
+            }else{
+                return $next($request);
+                return response()->json(['error'=>'Something is wrong']);
+            }
+        }
+        return $next($request);
+    }
+}
+```
+`jwtMiddleware.php`
+
+The jwtMiddleware attempts to validate the authenticity of the token, decrypting its content which purportedly carries information about the user requesting a resource or performing an action. It returns an error if the token is invalid or has expired, otherwise the user is allowed access to the system.
+
+**STEP 7**: We register the jwtMiddleware in our **app/Http/kernel.php** file:
+```
+<?php
+
+namespace App\Http;
+
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+
+class Kernel extends HttpKernel
+{
+    ....
+    ....
+    protected $routeMiddleware = [
+        ....
+        'jwt-auth' => \App\Http\Middleware\jwtMiddleware::class,
+    ];
+}
+```
+
+**STEP 8**: Next, we create a UserController that registers and logs users in. Upon each login, the controller generates and signs a unique token that’s sent back to the user:
+```
+<?php
+namespace App\Http\Controllers;
+use Illuminate\Http\Request;
+use App\User;
+use JWTAuth;
+use JWTAuthException;
+class UserController extends Controller
+{
+    private function getToken($email, $password)
+    {
+        $token = null;
+        //$credentials = $request->only('email', 'password');
+        try {
+            if (!$token = JWTAuth::attempt( ['email'=>$email, 'password'=>$password])) {
+                return response()->json([
+                    'response' => 'error',
+                    'message' => 'Password or email is invalid',
+                    'token'=>$token
+                ]);
+            }
+        } catch (JWTAuthException $e) {
+            return response()->json([
+                'response' => 'error',
+                'message' => 'Token creation failed',
+            ]);
+        }
+        return $token;
+    }
+    public function login(Request $request)
+    {
+        $user = \App\User::where('email', $request->email)->get()->first();
+        if ($user && \Hash::check($request->password, $user->password)) // The passwords match...
+        {
+            $token = self::getToken($request->email, $request->password);
+            $user->auth_token = $token;
+            $user->save();
+            $response = ['success'=>true, 'data'=>['id'=>$user->id,'auth_token'=>$user->auth_token,'name'=>$user->name, 'email'=>$user->email]];           
+        }
+        else 
+          $response = ['success'=>false, 'data'=>'Record doesnt exists'];
+      
+
+        return response()->json($response, 201);
+    }
+    public function register(Request $request)
+    { 
+        $payload = [
+            'password'=>\Hash::make($request->password),
+            'email'=>$request->email,
+            'name'=>$request->name,
+            'auth_token'=> ''
+        ];
+                  
+        $user = new \App\User($payload);
+        if ($user->save())
+        {
+            
+            $token = self::getToken($request->email, $request->password); // generate user token
+            
+            if (!is_string($token))  return response()->json(['success'=>false,'data'=>'Token generation failed'], 201);
+            
+            $user = \App\User::where('email', $request->email)->get()->first();
+            
+            $user->auth_token = $token; // update user token
+            
+            $user->save();
+            
+            $response = ['success'=>true, 'data'=>['name'=>$user->name,'id'=>$user->id,'email'=>$request->email,'auth_token'=>$token]];        
+        }
+        else
+            $response = ['success'=>false, 'data'=>'Couldnt register user'];
+        
+        
+        return response()->json($response, 201);
+    }
+}
+```
+`UserController.php`
+
+**STEP 9**: Register API routes in the **routes/api.php** file. In Laravel, API routes and web routes are registered in separate files to avoid mixing them all up.
+```
+<?php
+
+use Illuminate\Http\Request;
+
+Route::middleware('auth:api')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+
+
+Route::group(['middleware' => ['jwt.auth','api-header']], function () {
+  
+    // all routes to protected resources are registered here  
+    Route::get('users/list', function(){
+        $users = App\User::all();
+        
+        $response = ['success'=>true, 'data'=>$users];
+        return response()->json($response, 201);
+    });
+});
+Route::group(['middleware' => 'api-header'], function () {
+  
+    // The registration and login requests doesn't come with tokens 
+    // as users at that point have not been authenticated yet
+    // Therefore the jwtMiddleware will be exclusive of them
+
+    Route::post('user/login', 'UserController@login');
+    Route::post('user/register', 'UserController@register');
+});
+```
+`api.php`
+
+We need to create a middleware that appends a **Access-Control-Allow-Origin** header to all responses from the server. This way the client’s browser would not raise a ‘No Access-Control-Allow-Origin header’ error when resources are requested from servers other the host server.
+![](/images/1_naXDHEgeaHTb4QXPteZ1XQ.png)
+
+
+For instance, we get the above error when we try to access resources from a http://localhost:8000/api/user/login endpoint on a React app that resides at http://localhost:3000. This is so because no **Access-Control-Allow-Origin** header accompanied responses from http://localhost:8000, the browser will therefore raise an error, denying the app access to the response received from the server.
+
+**STEP 10**: Create a **API.php** middleware that appends **Access-Control-Allow-Origin** header to all outgoing server responses:
+```
+
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+
+class API
+{
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
+     */
+    public function handle($request, Closure $next)
+    {
+        $response = $next($request);
+        $response->header('Access-Control-Allow-Headers', 'Origin, Content-Type, Content-Range, Content-Disposition, Content-Description, X-Auth-Token');
+        $response->header('Access-Control-Allow-Origin', '*');
+        //add more headers here
+        return $response;
+    }
+}
+```
+
+We will register the **App/Http/Middleware/API.php** middleware in the **App/Http/Kernel.php** file:
+```
+<?php
+namespace App\Http;
+use Illuminate\Foundation\Http\Kernel as HttpKernel;
+class Kernel extends HttpKernel
+{
+    ....
+    ....
+    protected $routeMiddleware = [
+        ....
+        'jwt-auth' => \App\Http\Middleware\jwtMiddleware::class,
+        'api-header' => \App\Http\Middleware\API::class,
+    ];
+}
+```
+
+**Note**: If you get any of these errors:
+```
+- Class Tymon\JWTAuth\Providers\JWT\NamshiAdapter does not exist
+
+- Class Tymon\JWTAuth\Providers\Auth\IlluminateAuthAdapter does not exist
+
+- Class Tymon\JWTAuth\Providers\Storage\IlluminateCacheAdapter does not exist
+```
+Make the following corrections in your **Config/jwt.php** file:
+
+```
+// 'jwt' => 'Tymon\JWTAuth\Providers\JWT\NamshiAdapter',
+'jwt' => 'Tymon\JWTAuth\Providers\JWT\Namshi',
+// 'auth' => 'Tymon\JWTAuth\Providers\Auth\IlluminateAuthAdapter',
+'auth' => 'Tymon\JWTAuth\Providers\Auth\Illuminate',
+
+// 'storage' => 'Tymon\JWTAuth\Providers\Storage\IlluminateCacheAdapter',
+'storage' => 'Tymon\JWTAuth\Providers\Storage\Illuminate',
+```
+
+**STEP 11**: Update User Model:
+
+Firstly you need to implement the `Tymon\JWTAuth\Contracts\JWTSubject` contract on your User model, which requires that you implement the 2 methods `getJWTIdentifier()` and `getJWTCustomClaims()`.
+
+This will be the final form of our User model:
+
+```
+<?php
+
+namespace App;
+
+use Illuminate\Notifications\Notifiable;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+
+use Tymon\JWTAuth\Contracts\JWTSubject;
+use Illuminate\Database\Eloquent\Model;
+
+class User extends Authenticatable implements JWTSubject
+
+{
+    use Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name', 'email', 'password', 'auth_token'
+    ];
+
+    /**
+     * The attributes that should be hidden for arrays.
+     *
+     * @var array
+     */
+    protected $hidden = [
+        'password', 'remember_token',
+    ];
+
+    /**
+     * Get the identifier that will be stored in the subject claim of the JWT.
+     *
+     * @return mixed
+     */
+    public function getJWTIdentifier()
+    {
+        return $this->getKey();
+    }
+
+    /**
+     * Return a key value array, containing any custom claims to be added to the JWT.
+     *
+     * @return array
+     */
+    public function getJWTCustomClaims()
+    {
+        return [];
+    }
+}
+```
+
+We now have our endpoints in place waiting to serve data to our React app. We will create a react application that provides registration, login and homepage functionality.
+
+### Creating The React App
+
+We will use the create-react-app command to create a fresh react app with basic dependencies installed
+
+**STEP 1**: Create fresh react app with create-react-app command
+```
+npx create-react-app my-project-react  
+cd my-project-react  
+npm start
+```
+> Note: [**_npx_**](https://medium.com/@maybekatz/introducing-npx-an-npm-package-runner-55f7d4bd282b) comes with npm 5.2+ and higher.
+
+The newly created directory should be looking like this, excluding **Home.js**, **Login.js** and **Register.js** components that will added later.
+
+```
+my-project-react
+├── README.md
+├── node_modules
+├── package.json
+├── .gitignore
+├── public
+│   └── favicon.ico
+│   └── index.html
+│   └── manifest.json
+└── src
+    └── App.css
+    └── Home.js
+    └── Login.js
+    └── Register.js
+    └── App.js
+    └── App.test.js
+    └── index.css
+    └── index.js
+    └── logo.svg
+    └── registerServiceWorker.js
+```
+
+We will add 3 more dependencies to our react app: “react-router-dom”, “axios”, and “jquery” by running this command:
+```
+npm install react-router-dom && npm install jquery && npm install axios
+```
+**Axios** will be used to make a promise based HTTP or network request like Login, Register and fetching list of users from the server
+
+[**React Router**](https://www.npmjs.com/package/react-router-dom) is a collection of **navigational components** that compose declaratively with your application. It will help us navigate through pages that will be rendered by there respective components.
+
+> **Note**: if you encounter any errors with any of the module, run _npm install_ again
+
+**STEP 2**: Initialize the App Component by setting the state in the constructor:
+
+```
+this.state = {
+
+   isLoggedIn: false,
+
+   user: {}
+
+};
+```
+
+**STEP 3**: Create a loginUser function in the App Component **src/index.js.** This function will make an HTTP POST request with axios to the Laravel API user login endpoint. The Login.js component will call **\_loginUser()** — A parent function that is passed as props to it with, which takes the user login credential as argument.
+```
+
+  _loginUser = (email, password) => {
+    $("#login-form button")
+      .attr("disabled", "disabled")
+      .html(
+        '<i class="fa fa-spinner fa-spin fa-1x fa-fw"></i><span class="sr-only">Loading...</span>'
+      );
+    var formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+
+    axios
+      .post("http://localhost:8000/api/user/login/", formData)
+      .then(response => {
+        console.log(response);
+        return response;
+      })
+      .then(json => {
+        if (json.data.success) {
+          alert("Login Successful!");
+
+          let userData = {
+            name: json.data.data.name,
+            id: json.data.data.id,
+            email: json.data.data.email,
+            auth_token: json.data.data.auth_token,
+            timestamp: new Date().toString()
+          };
+          let appState = {
+            isLoggedIn: true,
+            user: userData
+          };
+          // save app state with user date in local storage
+          localStorage["appState"] = JSON.stringify(appState);
+          this.setState({
+            isLoggedIn: appState.isLoggedIn,
+            user: appState.user
+          });
+        } else alert("Login Failed!");
+
+        $("#login-form button")
+          .removeAttr("disabled")
+          .html("Login");
+      })
+      .catch(error => {
+        alert(`An Error Occured! ${error}`);
+        $("#login-form button")
+          .removeAttr("disabled")
+          .html("Login");
+      });
+  };
+```
+`loginUser.js`
+
+**STEP 4**: Create a registerUser function in the App component in **src/index.js.** This function will make an HTTP POST request with axios to the Laravel API user registration endpoint. The Register.js component will call **\_registerUser()** — A parent function that is passed as props to it with, which takes the user inputs as argument.
+```
+  _registerUser = (name, email, password) => {
+    $("#email-login-btn")
+      .attr("disabled", "disabled")
+      .html(
+        '<i class="fa fa-spinner fa-spin fa-1x fa-fw"></i><span class="sr-only">Loading...</span>'
+      );
+
+    var formData = new FormData(); 
+    formData.append("password", password);
+    formData.append("email", email);
+    formData.append("name", name);
+
+    axios
+      .post("http://localhost:8000/api/user/register", formData)
+      .then(response => {
+        console.log(response);
+        return response;
+      })
+      .then(json => {
+        if (json.data.success) {
+          alert(`Registration Successful!`);
+
+          let userData = {
+            name: json.data.data.name,
+            id: json.data.data.id,
+            email: json.data.data.email,
+            auth_token: json.data.data.auth_token,
+            timestamp: new Date().toString()
+          };
+          let appState = {
+            isLoggedIn: true,
+            user: userData
+          };
+          // save app state with user date in local storage
+          localStorage["appState"] = JSON.stringify(appState);
+          this.setState({
+            isLoggedIn: appState.isLoggedIn,
+            user: appState.user
+          });
+        } else {
+          alert(`Registration Failed!`);
+          $("#email-login-btn")
+            .removeAttr("disabled")
+            .html("Register");
+        }
+      })
+      .catch(error => {
+        alert("An Error Occured!" + error);
+        console.log(`${formData} ${error}`);
+        $("#email-login-btn")
+          .removeAttr("disabled")
+          .html("Register");
+      });
+  };
+```
+`registerUser.js`
+
+On successful login or Registration, the server sends a token along with the logged in user’s details as response. This token is to accompany all further requests to the server (e.g fetching a list of all registered users by the Home component) as it will be used to identify and validate the user.
+
+**STEP 5**: Create a logoutUser function in the App component in **src/index.js** file. It will set the application state to the default state, which will have the isLoggedIn attribute set to false. It then saves the state to the local storage after which the app is re-rendered by calling the this.setState function with the new state as argument.
+```
+  _logoutUser = () => {
+    let appState = {
+      isLoggedIn: false,
+      user: {}
+    };
+    // save app state with user date in local storage
+    localStorage["appState"] = JSON.stringify(appState);
+    this.setState(appState);
+  };
+```
+`logoutUser.js`
+
+When the App component mounts, we want it to fetch the last known state of the app which has been saved to local storage — if any — and then update itself with this fetched state:
+
+```
+  componentDidMount() {
+    let state = localStorage["appState"];
+    if (state) {
+      let AppState = JSON.parse(state);
+      console.log(AppState);
+      this.setState({ isLoggedIn: AppState.isLoggedIn, user: AppState });
+    }
+  }
+```
+
+> The final look of the App component can be seen on the embedded codesandbox project.
+
+**STEP 6**: Create the Register component. The register component is a stateless one that takes the \_registerUser function as props from the parent component (App component).
+
+```
+import React from "react";
+import { Link } from "react-router-dom";
+
+const Register = ({ history, registerUser = f => f }) => {
+  let _email, _password, _name;
+
+  const handleLogin = e => {
+    e.preventDefault();
+
+    registerUser(_name.value, _email.value, _password.value);
+  };
+  return (
+    <div id="main">
+      <form id="login-form" action="" onSubmit={handleLogin} method="post">
+        <h3 style={{ padding: 15 }}>Register Form</h3>
+        <input ref={input => (_name = input)} style={styles.input} autoComplete="off" id="email-input" name="email" type="text" className="center-block" placeholder="Name" />
+        <input ref={input => (_email = input)} style={styles.input} autoComplete="off" id="email-input" name="email" type="text" className="center-block" placeholder="email" />
+        <input ref={input => (_password = input)} style={styles.input} autoComplete="off" id="password-input" name="password" type="password" className="center-block" placeholder="password" />
+        <button type="submit" style={styles.button} className="landing-page-btn center-block text-center" id="email-login-btn" href="#facebook" >
+          Register
+        </button>
+
+        <Link style={styles.link} to="/login">
+          Login
+        </Link>
+      </form>
+    </div>
+  );
+};
+
+export default Register;
+```
+
+**STEP 7**: Create the Login component. The login component is also a stateless one that takes the \_loginUser function as props from the parent component (App component).
+```
+import React from "react";
+import { Link } from "react-router-dom";
+
+const Login = ({ history, loginUser = f => f }) => {
+  let _email, _password;
+  const handleLogin = e => {
+    e.preventDefault();
+    loginUser(_email.value, _password.value);
+  };
+  return (
+    <div id="main">
+      <form id="login-form" action="" onSubmit={handleLogin} method="post">
+        <h3 style={{ padding: 15 }}>Login Form</h3>
+        <input ref={input => (_email = input)} style={styles.input} autoComplete="off" id="email-input" name="email" type="text" className="center-block" placeholder="email" />
+        <input ref={input => (_password = input)} style={styles.input} autoComplete="off" id="password-input" name="password" type="password" className="center-block" placeholder="password" />
+        <button type="submit" style={styles.button} className="landing-page-btn center-block text-center" id="email-login-btn" href="#facebook" >
+          Login
+        </button>
+      </form>
+      <Link style={styles.link} to="/register" >
+        Register
+      </Link>
+    </div>
+  );
+};
+
+export default  Login;
+```
+`login.js`
+
+**STEP 8**: Create the Home component. The Home component after mounting, using axios, fetches a list of all users registered on the server(so you can register multiple users to populate the list) through the Laravel API. The API call is accompanied with the user token initially gotten from the server on Login/Registration.
+```
+import React from "react";
+import axios from "axios";
+
+const styles = {
+  fontFamily: "sans-serif",
+  textAlign: "center"
+};
+
+export default class Home extends React.Component {
+  constructor(props) {
+    super(props);
+    
+    this.state = {
+      token: JSON.parse(localStorage["appState"]).user.auth_token,
+      users: []
+    };
+  }
+
+  componentDidMount() {
+    axios
+      .get(`http://localhost:8000/api/users/list?token=${this.state.token}`)
+      .then(response => {
+        console.log(response);
+        return response;
+      })
+      .then(json => {
+        if (json.data.success) {
+          this.setState({ users: json.data.data });
+          //alert("Login Successful!");
+        } else alert("Login Failed!");
+      })
+      .catch(error => {
+        alert(`An Error Occured! ${error}`);
+      });
+  }
+
+  render() {
+    return (
+      <div style={styles}>
+        <h2>Welcome Home {"\u2728"}</h2>
+        <p>List of all users on the system</p>
+        <ul>{this.state.users.map(user => <ol style={{padding:15,border:"1px solid #cccccc", width:250, textAlign:"left",marginBottom:15,marginLeft:"auto", marginRight:"auto"}}><p>Name: {user.name}</p><p>Email: {user.email}</p></ol>)}</ul>
+        <button
+          style={{ padding: 10, backgroundColor: "red", color: "white" }}
+          onClick={this.props.logoutUser}
+        >
+          Logout{" "}
+        </button>
+      </div>
+    );
+  }
+}
+```
+`home.js`
+
+The users list is a protected resource which is only available to authenticated and authorized users. The Laravel API evaluates the token passed along with the request. This request is then only granted on successful validation of the token, else the server returns an “Unauthorized” response.
+
+You can find the React Frontend Implementation on CodeSandbox [**Here**](https://codesandbox.io/s/m3kyx84jzp)
+
+### Conclusion:
+
+In this article, we’ve learned how to create a Laravel RESTful API that performs token-based authentications and we’ve also created a React application that fetches resources from this Laravel API by providing stored tokens received at authentication point.
