@@ -18,10 +18,9 @@ const Header = () => {
               <Image
                 alt="Gbenga Oni"
                 width={60}
-                style={{borderRadius: '50%'}}
+                style={{ borderRadius: '50%' }}
                 src="/static/images/logo-2.jpeg"
               />
-               
             </div>
             {typeof siteMetadata.headerTitle === 'string' ? (
               <div className="hidden h-6 text-2xl font-semibold sm:block">

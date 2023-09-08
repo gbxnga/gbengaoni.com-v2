@@ -1,9 +1,10 @@
 export default function Head() {
   const meta = {
     title: 'Gbenga Oni | Senior DevOps & Cloud Engineer',
-    description: 'Gbenga Oni. DevOps Engineer. AWS Certified Solutions Architect & Developer Associate',
+    description:
+      'Gbenga Oni. DevOps Engineer. AWS Certified Solutions Architect & Developer Associate',
     image:
-      'https://avatars.githubusercontent.com/u/30432941?s=400&u=d7b5555b1e2de715ea6891370cd86e2805cd073b&v=4'
+      'https://avatars.githubusercontent.com/u/30432941?s=400&u=d7b5555b1e2de715ea6891370cd86e2805cd073b&v=4',
   }
   return (
     <>
