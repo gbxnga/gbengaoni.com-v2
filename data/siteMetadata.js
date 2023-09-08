@@ -7,7 +7,7 @@ const siteMetadata = {
   language: 'en-us',
   theme: 'system', // system, dark or light
   siteUrl: 'https://gbengaoni.com',
-  siteRepo: 'https://github.com/gbxnga/gbengaoni.com',
+  siteRepo: 'https://github.com/gbxnga/gbengaoni.com-v2',
   siteLogo: '/static/images/logo-2.jpeg' ,
   // socialBanner: '/static/images/twitter-card.png',
   mastodon: 'https://mastodon.social/@mastodonuser',
