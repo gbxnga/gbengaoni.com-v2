@@ -17,7 +17,7 @@ const Header = () => {
               {/* <Logo /> */}
               <Image
                 alt="Gbenga Oni"
-                width={60}
+                width={50}
                 style={{ borderRadius: '50%' }}
                 src="/static/images/logo-2.jpeg"
               />
