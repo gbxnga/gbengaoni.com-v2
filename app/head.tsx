@@ -31,7 +31,7 @@ export default function Head() {
       <link href={meta.image} rel="icon" type="image/x-icon" />
 
       {/* Global Site Tag (gtag.js) - Google Analytics */}
-      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-126371045-1" />
+      {/* <script async src="https://www.googletagmanager.com/gtag/js?id=UA-126371045-1" />
       <script
         dangerouslySetInnerHTML={{
           __html: `
@@ -43,7 +43,7 @@ export default function Head() {
             `,
         }}
       />
-      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1047622928074372" crossorigin="anonymous" />
+      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1047622928074372" crossorigin="anonymous" /> */}
     </>
   )
 }
