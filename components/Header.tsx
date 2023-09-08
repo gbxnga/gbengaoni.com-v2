@@ -5,6 +5,7 @@ import Link from './Link'
 import MobileNav from './MobileNav'
 import ThemeSwitch from './ThemeSwitch'
 import SearchButton from './SearchButton'
+import Image from 'next/image'
 
 const Header = () => {
   return (
@@ -14,7 +15,13 @@ const Header = () => {
           <div className="flex items-center justify-between">
             <div className="mr-3">
               {/* <Logo /> */}
-              <img width={60} style={{borderRadius: "50%"}} src="/static/images/logo-2.jpeg"/>
+              <Image
+                alt="Gbenga Oni"
+                width={60}
+                style={{borderRadius: '50%'}}
+                src="/static/images/logo-2.jpeg"
+              />
+               
             </div>
             {typeof siteMetadata.headerTitle === 'string' ? (
               <div className="hidden h-6 text-2xl font-semibold sm:block">
