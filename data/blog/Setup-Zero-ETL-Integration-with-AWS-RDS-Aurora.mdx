@@ -1,0 +1,250 @@
+---
+title: 'Setup Zero-ETL Integration with AWS RDS Aurora'
+summary: >-
+  Create a automated real-time data movement from your database to AWS Redshift without maintaining complex data pipelines.
+date: '2023-09-19T18:48:28.092Z'
+categories: [] 
+tags: ['Data Engineering', 'ETL', 'RDS', 'Data Pipelines', 'Big Data']
+keywords: []
+images: ['/images/22-article-banner-3.png']
+slug: Setup-Zero-ETL-Integration-with-AWS-RDS-Aurora
+---
+
+![](/images/22-article-banner-3.png)
+
+
+### Introduction
+
+AWS has introduced the new Zero-ETL integration feature that facilitates the automatic shipping off
+data from Amazon Aurora in real-time to AWS's datawarehouse service -- Redshift. This service is managed enitrely by AWS. This reduces the need to setup, 
+manage and administer complex data pipelines. Petabytes of transaction data from Amazon Aurora can be made 
+avaliable for real-time analytics.
+
+In this article we will create an AWS Aurora database as source and an AWS Redshift Serverless database 
+as destination and then we will establish a Zero-ETL integration between them, making data commited to
+the Aurora database available in Redshift in real-time for analysis. 
+
+## Create Amazon Aurora Database
+Navigate to the RDS page on your AWS console and click **Create Database**
+
+![](/images/22-rds-9.png)
+
+Choose the Standard database creation method and the Aurora (MySQL Compatible) as engine type. 
+Aurora PostgreSQL is not support as at the time of this writing.
+
+![](/images/22-rds-create-db-1.png)
+
+Scroll down and select Aurora MySQL 3.03.1 (Compatible with MySQL 8.0.26) as engine version. 
+It is important to note that the source DB cluster must be running Aurora MySQL version 3.03.1 and above.
+
+![](/images/22-rds-5.png)
+
+Name your database and provide default login credentials - username and password.
+
+Choose your preferred RDS instance type. In this case, I decided to use the burstable classs `db.t3.medium`. 
+![](/images/22-rds-6.png)
+
+Choose the **Don't create an Aurora Replica** option since this is for testing purposes.
+
+![](/images/22-rds-10.png)
+
+Make sure the database is publically available(we will establish connection with local PC shortly) and choose the default 
+VPC and security group for now.
+
+![](/images/22-rds-7.png)
+
+Click on **Create Database** and wait for RDS to finish provisioning the instance.
+
+![](/images/22-rds-11.png) 
+
+Once the database is ready, note the Host URL of the RDS instance. 
+You will find this clicking on the cluster and scrolling down to the **Endpoints** section.
+
+![](/images/22-rds-12.png) 
+
+Create a Security Group that allows connection to port `3360` from **Anywhere** and attach 
+it to the new database. 
+
+![](/images/22-rds-13.png) 
+
+Click **Modify** on your the database and add the new security group. This will enable connection between you PC and the new instance.
+
+![](/images/22-rds-14.png) 
+
+Make sure to select **Apply immediately** during modification.
+
+## Data Ingestion using PHPMyAdmin
+We will connect a local instance of PHPMyAdmin to the newly created Amazon Aurora database. 
+phpMyAdmin is a free and open-source web-based application written in PHP that provides a graphical interface for managing MySQL and MariaDB databases. 
+This will enable ingestion of data directly into the database.
+### Create Local PHPMyAdmin instance using Docker
+We will use docker to quickly spin up a phpMyAdmin container, making it available on
+port `8080` of localhost.
+
+```bash:run-phpMyAdmin.sh
+docker run --name phpmyadmin -e PMA_ARBITRARY=1 -p 8080:80 phpmyadmin/phpmyadmin
+``` 
+
+phpMyAdmin will now be available at `localhost:8080`. 
+
+![](/images/22-rds-15.png) 
+
+Provide the RDS instance hostname and admin credentials and click **Login**.
+
+![](/images/22-rds-16.png) 
+
+Connection is now established between your local machine and the RDS instance.
+
+## Create Redhshift Serverless Cluster
+
+Navigate to the Redshift section on the AWS console. Open the menu and Select 
+**Redshift Serverless** to create a new serverless cluster.
+
+### Create Redshift Preview Workgroup
+We need to create a **Preview Workgroup**, instead of the regular Redshift Serverless
+workgroup. This is beacuse, for now, the Zero-ETL integration is only available for testing purposes
+only. 
+
+![](/images/22-rds-31.png) 
+
+On the Redshift serverless dashboard, you will see an alert plane asking you to try the
+new Amazon Redshift features in preview. Click on the **Create Preview Workgroup** button. 
+Please make sure you don't click on **Create Workgroup** button.
+
+![](/images/22-rds-39.png)
+
+Name the workgroup and leave every other configurations on the form as is. Scroll down 
+and click the **Next** button.
+
+You will be prompted to create an associated namespace for the workgroup. 
+
+![](/images/22-rds-33.png)
+
+Leave other config as is, scroll down and click the **Next** button. Then click **Create** button to complete creation.
+
+
+The new workgroup and namespace for Redshift Serverless is now being created. Wait for the process to finish.
+
+![](/images/22-rds-34.png)
+
+Redshift serverless is now available.
+
+![](/images/22-rds-35.png)
+
+Let's make sure we are able to query Redshift: Click on the `Query Data` button on the top-right.
+You will be taken to the Redshift Query Console. 
+
+![](/images/22-rds-36.png)
+
+Select the **Serverless: my-zero-etl-preview-workgroup** dropdown to initiate a connection between 
+the editor and redshift database. 
+
+![](/images/22-rds-37.png)
+
+Select **Federated User** and click on **Create Connection**. 
+
+![](/images/22-rds-38.png)
+
+Connection is now established. 
+
+## Create Zero-ETL Integration 
+
+Now that we have created an Aurora database and a Redshift serverless database, 
+lets setup a Zero-ETL integration between them, using Aurora as source and Redshift as target.
+
+### Configure Aurora DB Parameter Group for Zero-ETL
+
+First we need to modify the DB parameter group of the Aurora cluster/instance because 
+for Zero-ETL integration, specific values for the DB Cluster parameters are required - the Binary logging configuration.
+
+A custom DB parameter group will be created and then it will be attached to the DB Cluster.
+A Custome parameter group with the below settings is needed:
+```
+aurora_enhanced_binlog=1
+binlog_backup=0
+binlog_format=ROW
+binlog_replication_globaldb=0
+binlog_row_image=full
+binlog_row_metadata=full
+```
+
+Navigate to **Parameter Groups** on the RDS console. Select the Custom plane and click
+**Create Parameter Group**
+
+![](/images/22-rds-24.png)
+
+Select `aurora-mysql:8.0` as parameter group family. And choose Type **DB Cluster Parameter Group**. 
+Give it a name and description then click **Create**.
+
+![](/images/22-rds-25.png)
+
+The Custom parameter group should now be created. 
+
+To edit the parameter group, select it and then click **Actions** dropdown on the top-right corner and select **Edit**. 
+
+![](/images/22-rds-26.png)
+
+Now search for each of the config that needs to be updated(based on the config settings listed above), for instance
+search for `binlog_row_image` and set it to `full`. Do same for the rest of the 6 parameters that need to be updated.
+
+Once done, click **Save Changes**.
+
+Now that the new RDS custom parameter group is ready, navigate to RDS dashboard and select the Aurora Database you 
+created earlier, and click **Modify**. Scroll to the bottom and update the DB cluster parameter group to the new custom
+parameter group. In this case `my-zero-etl-db-param`.
+
+![](/images/22-rds-27.png)
+
+Click **Continue** and choose **Apply Immediately** on the final modification page, then click **Modify Cluster**.
+
+![](/images/22-rds-28.png)
+
+RDS will now apply the new changes to the cluster. However the changes are asynchronously made,
+which means they wont be applied immediately. Rebooting the database is one way to ensure 
+the changes are applied right away. So select the **instance** of the Aurora database and click **Reboot**. 
+
+### Specify AWS Aurora RDS as integration source
+We need to let Redshift namespace know that the Aurora database created earlier is the integration source. 
+This can be done on the **Resource Policy** tab of the the namespace page. Go back to Redshift Serverless dashboard,
+click on the namespace you created earlier( in this case, I named mine `my-zero-etl-namespace` ), scroll down to the 
+tabs and click on **Resource Policy**.
+
+On the **Resource Policy** tab, scroll down to **Authorized integration sources**, click on **Add authorized integration source** button
+and paste the ARN of the AWS Aurora database created earlier. 
+
+![](/images/22-rds-41.png)
+
+You will find the ARN on the **Configuration** tab section of the database page. 
+
+![](/images/22-rds-40.png)
+
+Add the ARN and click **Save Changes**.
+
+![](/images/22-rds-42.png)
+
+
+### Complete Zero-ETL integration for RDS Aurora Cluster
+On the RDS dashboard, navigate to **Zero-ETL interations** on the Menu. Scroll down and click the 
+**Create Zero-ETL integration** button on the top-right corner of the integrations plane.
+
+![](/images/22-rds-43.png) 
+
+Give the integration a name, select the Aurora database and also the Redshift serverless database created earlier.
+
+![](/images/22-rds-44.png)
+
+Leave every other thing as is, scroll down and click the **Create Zero-ETL integration** button.
+
+![](/images/22-rds-45.png)
+
+Zero-ETL integration is now in progress. 
+
+![](/images/22-rds-46.png) 
+
+Zero-ETL integration is now in now done and **Active**. 
+
+
+## Conclusion
+
+
+
