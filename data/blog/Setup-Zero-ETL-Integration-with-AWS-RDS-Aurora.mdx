@@ -241,7 +241,7 @@ Zero-ETL integration is now in progress.
 
 ![](/images/22-rds-46.png) 
 
-Zero-ETL integration is now in now done and **Active**.
+✅ Zero-ETL integration is now in now done and **Active**.
 
 ### Turn on case sensitivity for Amazon Redshift serverless
 Part of the requirement for a target warehouse in Zero-ETL integration is to have 
@@ -258,9 +258,9 @@ aws redshift-serverless update-workgroup \
 
 ### Create Zero-ETL Integration Database
 Now we need to create a database for the integration. This is required to activate the 
-integration and access the data.
+integration and to access the data.
 
-If you navigate to **Zero-ETL Integrations** page on the Radshift dashboard you will see, as shown below,
+If you navigate to **Zero-ETL Integrations** page on the Radshift dashboard, you will see, as shown below,
 that a **No Database** alert is displayed. 
 
 ![](/images/22-rds-47.png)
@@ -274,6 +274,8 @@ Give the database a name. I have named mine `my_integration_database` in this ca
 Then click **Create Database**.
 
 ![](/images/22-rds-49.png)
+
+✅ Integration database is now set up. 
 
 ## Testing Zero-ETL Integration
 Now that we have setup Zero-ETL integration with source DB and destination datawarehouse, 
@@ -314,7 +316,7 @@ you will find the data you just inserted there.
 ## Conclusion
 
 You have now successfully created a Zero-ETL integration between your source database
-and you destination datawarehouse(Redshift).
+and your destination datawarehouse(Redshift).
 
 
 
