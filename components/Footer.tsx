@@ -1,10 +1,15 @@
 import Link from './Link'
 import siteMetadata from '@/data/siteMetadata'
 import SocialIcon from '@/components/social-icons'
-
+import NewsletterForm from 'pliny/ui/NewsletterForm'
 export default function Footer() {
   return (
     <footer>
+      {siteMetadata.newsletter?.provider && (
+        <div className="flex items-center justify-center pt-4">
+          <NewsletterForm />
+        </div>
+      )}
       <div className="mt-16 flex flex-col items-center">
         <div className="mb-3 flex space-x-4">
           <SocialIcon kind="mail" href={`mailto:${siteMetadata.email}`} size={6} />
@@ -21,11 +26,12 @@ export default function Footer() {
           <div>{` • `}</div>
           <Link href="/">{siteMetadata.title}</Link>
         </div>
-        <div className="mb-8 text-sm text-gray-500 dark:text-gray-400">
+        {/* <div className="mb-8 text-sm text-gray-500 dark:text-gray-400">
           <Link href="https://github.com/timlrx/tailwind-nextjs-starter-blog">
             Tailwind Nextjs Theme
           </Link>
-        </div>
+        </div> */}
+        
       </div>
     </footer>
   )
