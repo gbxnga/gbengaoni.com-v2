@@ -31,7 +31,6 @@ export default function Footer() {
             Tailwind Nextjs Theme
           </Link>
         </div> */}
-        
       </div>
     </footer>
   )
