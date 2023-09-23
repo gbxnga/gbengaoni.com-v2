@@ -5,11 +5,11 @@ import NewsletterForm from 'pliny/ui/NewsletterForm'
 export default function Footer() {
   return (
     <footer>
-      {siteMetadata.newsletter?.provider && (
+      /*{siteMetadata.newsletter?.provider && (
         <div className="flex items-center justify-center pt-4">
           <NewsletterForm />
         </div>
-      )}
+      )}*/
       <div className="mt-16 flex flex-col items-center">
         <div className="mb-3 flex space-x-4">
           <SocialIcon kind="mail" href={`mailto:${siteMetadata.email}`} size={6} />
