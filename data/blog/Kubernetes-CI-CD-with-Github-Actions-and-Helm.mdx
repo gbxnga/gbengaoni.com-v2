@@ -227,12 +227,12 @@ jobs:
 Here are the steps in this CI/CD pipeline explained:
 * **Get short SHA**: Initiate Github Actions Checkout version 2
 * **Set up QEMU**: Set up QEMU static binaries in the GitHub Actions workflow.
-* **Set up Docker Buildx**:
-* **AWS Credentials**:
-* **Login to Amazon ECR**:  
-* **Build, tag, and push image to Amazon ECR**: 
-* **kubeconfig**: 
-* **helm deploy**: 
+* **Set up Docker Buildx**: Initialize Buildx for `docker build` command
+* **AWS Credentials**: Initialize AWS credentials
+* **Login to Amazon ECR**:  Login to ECR
+* **Build, tag, and push image to Amazon ECR**:  Build and push docker image to ECR
+* **kubeconfig**: Setup Kubeconfig file
+* **helm deploy**: Deploy application to Kubernetes
 
 ### Configure Github Action Environment Variable and Secrets
 
