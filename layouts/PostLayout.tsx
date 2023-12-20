@@ -93,7 +93,12 @@ export default function PostLayout({ content, authorDetails, next, prev, childre
             </dl>
             <div className="divide-y divide-gray-200 dark:divide-gray-700 xl:col-span-3 xl:row-span-2 xl:pb-0">
               <div className="prose max-w-none pb-8 pt-10 dark:prose-invert">
-                <h1>Learn Hand-On AWS Cloud Engineering <a target="_blank" href="https://nimbus.school">HERE</a></h1>
+                <h1>
+                  Learn Hand-On AWS Cloud Engineering
+                  <a target="_blank" href="https://nimbus.school">
+                    HERE
+                  </a>
+                </h1>
                 {children}
                 </div>
               <div className="pb-6 pt-6 text-sm text-gray-700 dark:text-gray-300">
